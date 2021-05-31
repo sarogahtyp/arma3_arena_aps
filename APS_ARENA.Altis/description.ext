@@ -1,0 +1,51 @@
+class CfgFunctions
+{
+	class saro
+	{
+		class arena_aps
+		{
+			class arena_start {};
+			class track {};
+			class fire_bullet {};
+			class fire_cone {};
+			class substitute_threat {};
+		};
+	};
+};
+
+class CfgRemoteExec
+{
+	// List of Functions allowed to be sent from client via remoteExec
+	class Functions
+	{
+		// RemoteExec modes:
+		// 0 - disabled
+		// 1 - allowed, taking whitelist into account
+		// 2 - allowed, ignoring whitelist (default, because of backward compatibility)
+		mode = 1;
+
+		// Ability to send JIP messages:
+		// 0 - disable JIP messages
+		// 1 - allow JIP messages (default)
+		jip = 1;
+
+		class saro_fnc_arena_start
+		{
+			// Remote Execution from clients:
+			// 0 - allowed on other clients and server (default)
+			// 1 - allowed on other clients only
+			// 2 - allowed on server only
+			// any other value will be treated as 0
+			allowedTargets = 0;
+
+			// overrides the global Functions setting for this function
+			jip = 0;
+		};
+		
+		class saro_fnc_track
+		{
+			allowedTargets = 0;
+			jip = 0;
+		};
+	};
+};

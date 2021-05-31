@@ -1,0 +1,149 @@
+/*
+ Author: Sarogahtyp
+ Description: Searches for near AT objects and tries to destroy those
+			  Full Multiplayer compatible.
+			  Main loop runs on machine where vehicle is local.
+			  If locality of vehicle changes then the script will change locality as well
+			  If a threat is found then it will be tracked and 
+			  destroyed by a script on the machine where that threat is local.
+
+Params:
+		_vec - object - vehicle to which the Arena system is to be attached
+		_reload_time - number - optional - time to reload the charge after it was fired (default 2 seconds)
+        _range - number - optional - detection range (default 200 meters)
+        _fire_max_range - number - optional - maximum interception distance (default 70 meters)
+        _fire_min_range - number - optional - minimum interception distance (default 15 meters)
+		_charge_height - number - optional - charge explodes on this height above vehicle (default 10 meters)
+*/
+
+private _dummy = params [ ["_vec", objNull, [objNull]], ["_reload_time", 2, [0]], ["_range", 200, [0]], ["_fire_max_range", 70, [0]], ["_fire_min_range", 15, [0]], ["_charge_height", 10, [0]] ];
+
+//no object given, leave.
+if (isNull _vec || !alive _vec) exitWith {};
+
+//arena active allready?
+if ( !isNil {_vec getVariable "saro_arena_active"} ) then
+{
+ if (_vec getVariable "saro_arena_active") exitWith {};
+};
+
+//ensure that arena runs on the machine where the vehicle is local
+if (!local _vec) exitWith
+{
+ if (isServer) then
+ {
+  //send to machine where the vehicle is local
+  _dummy = [ _vec ] remoteExec [ "saro_fnc_arena_start", (owner _vec) ];
+ }
+ else
+ {
+  //as we are not on server we have to send it to server which will transfer it to the correct client
+  _dummy = [ _vec ] remoteExec [ "saro_fnc_arena_start", 2 ];
+ };
+};
+
+// mark arena active
+_vec setVariable ["saro_arena_active", true, true];
+
+private _bbr = boundingBoxReal _vec;
+private _p1 = _bbr select 0;
+private _p2 = _bbr select 1;
+
+_maxHeight = abs ((_p2 select 2) - (_p1 select 2)) + _charge_height;
+_maxWidth = 0.5 * (abs ((_p2 select 0) - (_p1 select 0)) max abs ((_p2 select 1) - (_p1 select 1))) ;
+
+private "_fire_range";
+
+_range = if (_range <= _fire_max_range) then {_fire_max_range + 1} else {_range};
+
+//_sleep_time for main loop. missiles should not get closer than 120% of _fire_max_range in one sleep cycle
+//assuming 2000 m/s as max speed for armas AT threats
+private _sleep_time = 0.4 * (_range - _fire_max_range) / 2000;
+
+// mark loaded charge as not fired
+_vec setVariable ["saro_charge_fired", false, true];
+
+// mark tracking as inactive
+_vec setVariable ["saro_tracking", false, true];
+  
+while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_active") && (local _vec) && (alive _vec) } } } do
+{
+ _incoming =[];
+
+ waitUntil 
+ {
+  sleep _sleep_time;
+
+  //check if something bad happend with vec
+  if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith {true};
+
+  if (_vec getVariable "saro_charge_fired") then
+  {
+   sleep _reload_time;
+   _vec setVariable ["saro_charge_fired", false, true];
+  };
+  
+  !(_vec getVariable "saro_tracking")
+ };
+
+ //check if something bad happend with vec
+ if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith {};
+
+ _incoming = (_vec nearObjects["RocketBase",_range]) select { (vectorMagnitude velocity _x) > 25 };
+
+ if (_incoming isEqualTo []) then
+ {
+  _incoming append (_vec nearObjects["MissileBase",_range]) select { (vectorMagnitude velocity _x) > 25 };
+ 
+  if (_incoming isEqualTo []) then
+  {
+   _incoming append (_vec nearObjects["ShellBase",_range]) select { (vectorMagnitude velocity _x) > 25 };
+  };
+ };
+ 
+ if !(_incoming isEqualTo []) then
+ {
+  private _threat = _incoming#0;
+  
+  private _speed = vectorMagnitude velocity _threat;
+
+  _fire_range = ( _fire_max_range - _fire_min_range ) * _speed / 2000 + _fire_min_range;
+
+  _max_distSqr = (_maxWidth + _fire_range)^2;
+
+  if (!local _threat) then
+  {
+   if (isServer) then
+   {
+    //send to machine where the threat is local
+    _dummy = [ _vec, _threat, _max_distSqr, _maxHeight] remoteExec [ "saro_fnc_track", (owner _threat) ];
+   }
+   else
+   {
+    //as we are not on server we have to send it to server which will transfer it to the correct client
+    _dummy = [ _vec, _threat, _max_distSqr, _maxHeight] remoteExec [ "saro_fnc_track", 2 ];
+   };
+  } else
+  {
+   //track locally
+   _dummy = [ _vec, _threat, _max_distSqr, _maxHeight ] spawn saro_fnc_track;
+  };
+  _vec setVariable ["saro_tracking", true, true];
+ };
+};
+
+//check if something bad happend with vec
+if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith {};
+
+//loop ended but arena is active. Means vehicle is not local anymore and we start the whole script again.
+if (_vec getVariable "saro_arena_active") exitWith
+{
+ // mark arena inactive
+ _vec setVariable ["saro_arena_active", false, true];
+ sleep 5;
+ 
+ [_vec] spawn saro_fnc_arena_start;
+};
+
+// mark arena inactive
+_vec setVariable ["saro_arena_active", false, true];

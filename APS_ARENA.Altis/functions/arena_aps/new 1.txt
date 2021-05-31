@@ -1,0 +1,15 @@
+_list1 = [worldSize/2, worldSize/2] nearObjects ["LaserTargetEBase", (worldSize * 1.41)];
+_list2 = [worldSize/2, worldSize/2] nearObjects ["LaserTargetE", (worldSize * 1.41)];
+
+_num1 = count _list1;
+_num2 = count _list2;
+
+diag_log format ["QWERTZ type 1: %1 / type 2: %2", _num1, _num2];
+
+
+*************************************************************************************
+
+
+
+_list = position player nearObjects 20;
+diag_log format ["QWERTZ: ", _list];
