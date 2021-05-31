@@ -9,6 +9,8 @@ class CfgFunctions
 			class fire_bullet {};
 			class fire_cone {};
 			class substitute_threat {};
+			class client_register {};
+			class client_unregister{};
 		};
 	};
 };
@@ -45,6 +47,18 @@ class CfgRemoteExec
 		class saro_fnc_track
 		{
 			allowedTargets = 0;
+			jip = 0;
+		};
+
+		class saro_fnc_client_register
+		{
+			allowedTargets = 2;
+			jip = 0;
+		};
+		
+		class saro_fnc_client_unregister
+		{
+			allowedTargets = 2;
 			jip = 0;
 		};
 	};

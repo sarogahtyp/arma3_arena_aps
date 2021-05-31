@@ -16,7 +16,7 @@ _norm_speed = vectorNormalized _speed_vector;
  
 _speed_change = _norm_speed vectorMultiply (_perc * 0.01);
 
-_speed_change set [ 2, (_speed_change#2 - _perc_inv) ];
+_speed_change set [ 2, ( (_speed_change#2) - _perc_inv) ];
 
 _speed_change = (vectorNormalized _speed_change) vectorMultiply _ro_speed;
 

@@ -10,6 +10,7 @@
 Params:
 		_vec - object - vehicle to which the Arena system is to be attached
 		_reload_time - number - optional - time to reload the charge after it was fired (default 2 seconds)
+										 - if lower 0.5 seconds than it is changed to 0.5 seconds
         _range - number - optional - detection range (default 200 meters)
         _fire_max_range - number - optional - maximum interception distance (default 70 meters)
         _fire_min_range - number - optional - minimum interception distance (default 15 meters)
@@ -18,13 +19,31 @@ Params:
 
 private _dummy = params [ ["_vec", objNull, [objNull]], ["_reload_time", 2, [0]], ["_range", 200, [0]], ["_fire_max_range", 70, [0]], ["_fire_min_range", 15, [0]], ["_charge_height", 10, [0]] ];
 
+missionNamespace setVariable ["debugOn", true, true]; // turn on/off debug mode
+
+//script entered, logging it.
+if (isServer) then
+{
+ if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Server: Script started, nothing checked."; };
+}
+else
+{
+ if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Client: Script started, nothing checked."; };
+};
+
 //no object given, leave.
-if (isNull _vec || !alive _vec) exitWith {};
+if (isNull _vec || {!alive _vec || !(_vec in vehicles) }) exitWith 
+{
+ if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS: Object is not an alive vehicle. Exit."; };
+};
 
 //arena active allready?
 if ( !isNil {_vec getVariable "saro_arena_active"} ) then
 {
- if (_vec getVariable "saro_arena_active") exitWith {};
+ if (_vec getVariable "saro_arena_active") exitWith 
+ {
+  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS: EXIT, arena active allready"; };
+ };
 };
 
 //ensure that arena runs on the machine where the vehicle is local
@@ -32,14 +51,24 @@ if (!local _vec) exitWith
 {
  if (isServer) then
  {
+  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Server: Vehicle not local, starting AS on client"; };
+  
   //send to machine where the vehicle is local
-  _dummy = [ _vec ] remoteExec [ "saro_fnc_arena_start", (owner _vec) ];
+  _dummy = _this remoteExec [ "saro_fnc_arena_start", (owner _vec) ];
  }
  else
  {
+  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Client: Vehicle not local starting AS on server"; };
+  
   //as we are not on server we have to send it to server which will transfer it to the correct client
-  _dummy = [ _vec ] remoteExec [ "saro_fnc_arena_start", 2 ];
+  _dummy = _this remoteExec [ "saro_fnc_arena_start", 2 ];
  };
+};
+
+//register running script instance on server to be able to handle locality changes
+if (!isServer) then
+{
+ _dummy = [(getPlayerUID player), _vec, _reload_time, _range, _fire_max_range, _fire_min_range, _charge_height] remoteExec [ "saro_fnc_client_register", 2 ];
 };
 
 // mark arena active
@@ -65,7 +94,10 @@ _vec setVariable ["saro_charge_fired", false, true];
 
 // mark tracking as inactive
 _vec setVariable ["saro_tracking", false, true];
-  
+
+// give network time to broadcast variables
+sleep 0.5;
+
 while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_active") && (local _vec) && (alive _vec) } } } do
 {
  _incoming =[];
@@ -75,19 +107,26 @@ while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_act
   sleep _sleep_time;
 
   //check if something bad happend with vec
-  if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith {true};
+  if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith 
+  {
+   if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS: Vehicle null, nil or dead. Exiting waitUntil"; };
+   true
+  };
 
   if (_vec getVariable "saro_charge_fired") then
   {
-   sleep _reload_time;
    _vec setVariable ["saro_charge_fired", false, true];
+   sleep (_reload_time max 0.5);
   };
   
   !(_vec getVariable "saro_tracking")
  };
 
  //check if something bad happend with vec
- if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith {};
+ if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith 
+ {
+  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS: Vehicle null, nil or dead. Exiting while"; };
+ };
 
  _incoming = (_vec nearObjects["RocketBase",_range]) select { (vectorMagnitude velocity _x) > 25 };
 
@@ -103,7 +142,7 @@ while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_act
  
  if !(_incoming isEqualTo []) then
  {
-  private _threat = _incoming#0;
+  private _threat = (_incoming#0);
   
   private _speed = vectorMagnitude velocity _threat;
 
@@ -129,21 +168,69 @@ while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_act
    _dummy = [ _vec, _threat, _max_distSqr, _maxHeight ] spawn saro_fnc_track;
   };
   _vec setVariable ["saro_tracking", true, true];
+
+  // give network time to broadcast variable
+  sleep 0.5;
  };
 };
 
 //check if something bad happend with vec
-if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith {};
+if !(isNil "_vec" || { isNull _vec } ) then
+{
+ if ( !alive _vec ) exitWith
+ {
+  // vehicle is destroyed. Mark arena inactive
+  _vec setVariable ["saro_arena_active", false, true];
+
+  if (isServer) then
+  {
+   if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Server: Vehicle is dead. Exiting script.";};
+  } else
+  {
+   if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Client: Vehicle is dead. Exiting script and unregistering";};
+
+   _dummy = [(getPlayerUID player), "_vec"] remoteExec [ "saro_fnc_client_unregister", 2 ]; 
+  };
+ };
+} else
+{
+ if (true) exitWith 
+ {
+  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS: Vehicle is nil or null. Exiting script"; };
+ };
+};
 
 //loop ended but arena is active. Means vehicle is not local anymore and we start the whole script again.
 if (_vec getVariable "saro_arena_active") exitWith
 {
  // mark arena inactive
  _vec setVariable ["saro_arena_active", false, true];
- sleep 5;
- 
- [_vec] spawn saro_fnc_arena_start;
+
+ // give network time to broadcast variable
+ sleep 0.5;
+
+ if (isServer) then
+ {
+  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Server: Vehicle not local anymore. Restarting script on client."; };
+  _dummy = _this remoteExec [ "saro_fnc_arena_start", (owner _vec) ];
+ } else
+ {
+  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Client: Vehicle not local anymore. Unregistering. Restarting script on server."; };
+
+  _dummy = [(getPlayerUID player), "_vec"] remoteExec [ "saro_fnc_client_unregister", 2 ];
+  _dummy = _this remoteExec [ "saro_fnc_arena_start", 2 ];
+ };
 };
 
-// mark arena inactive
+// arena was disabled mark it inactive
 _vec setVariable ["saro_arena_active", false, true];
+
+if (isServer) then
+{
+ if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Server: Normal script exit. Exiting script.";};
+} else
+{
+ if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Client: Normal script exit. Exiting script and unregistering";};
+
+ _dummy = [(getPlayerUID player), "_vec"] remoteExec [ "saro_fnc_client_unregister", 2 ]; 
+};

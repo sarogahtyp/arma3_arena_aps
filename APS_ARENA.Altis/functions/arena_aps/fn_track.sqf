@@ -7,7 +7,13 @@ params [["_vec", objNull, [objNull]], ["_threat", objNull, [objNull]], "_max_dis
 
 if (isNull _vec || !alive _vec) exitWith {};
 
-if (isNull _threat || !alive _threat) exitWith { _vec setVariable ["saro_tracking", false, true]; };
+if (isNull _threat || !alive _threat) exitWith 
+{ 
+ _vec setVariable ["saro_tracking", false, true];
+
+ // give network time to broadcast variables
+ sleep 0.5;
+};
 
 //if threat is not local at this point then we are on server machine!
 //Therefore we just execute this script on the proper client and leave.
@@ -49,3 +55,6 @@ waitUntil
 if ( isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith {};
 
 _vec setVariable ["saro_tracking", false, true];
+
+// give network time to broadcast variables
+sleep 0.5;

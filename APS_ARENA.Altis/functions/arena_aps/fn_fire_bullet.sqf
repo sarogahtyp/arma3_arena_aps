@@ -1,4 +1,6 @@
-params ["_start_pos", "_target_pos"];
+private "_dummy";
+
+_dummy = params ["_start_pos", "_target_pos"];
 
 private _move_dist = (_start_pos distance _target_pos) - 0.5;
 
