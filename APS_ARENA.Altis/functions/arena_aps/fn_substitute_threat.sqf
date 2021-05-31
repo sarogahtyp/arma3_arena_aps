@@ -1,7 +1,5 @@
 params [ ["_threat", objNull, [objNull]] ];
 
-if (isNull _threat || !alive _threat) exitWith { diag_log "TO SLOW"; };
-
 _perc = random 30;
 
 _class = typeOf _threat;

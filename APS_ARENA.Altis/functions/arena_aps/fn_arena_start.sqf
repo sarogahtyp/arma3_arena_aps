@@ -142,6 +142,8 @@ while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_act
  
  if !(_incoming isEqualTo []) then
  {
+  _vec setVariable ["saro_tracking", true, true];
+
   private _threat = (_incoming#0);
   
   private _speed = vectorMagnitude velocity _threat;
@@ -167,10 +169,6 @@ while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_act
    //track locally
    _dummy = [ _vec, _threat, _max_distSqr, _maxHeight ] spawn saro_fnc_track;
   };
-  _vec setVariable ["saro_tracking", true, true];
-
-  // give network time to broadcast variable
-  sleep 0.5;
  };
 };
 
@@ -222,9 +220,7 @@ if (_vec getVariable "saro_arena_active") exitWith
  };
 };
 
-// arena was disabled mark it inactive
-_vec setVariable ["saro_arena_active", false, true];
-
+//script was disabled, leave normal
 if (isServer) then
 {
  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS AS-Server: Normal script exit. Exiting script.";};
