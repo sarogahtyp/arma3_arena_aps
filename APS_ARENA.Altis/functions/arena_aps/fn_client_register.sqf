@@ -10,13 +10,13 @@ private _vec_params = [_vec, _reload_time, _range, _fire_max_range, _fire_min_ra
 
 if (isNil "saro_clients_running_arena") then
 {
- if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS CR-Server: No array found. Creating array and EH."; };
+ if ( saro_arena_debug ) then { diag_log "SASPS CR-Server: No array found. Creating array and EH."; };
 
  saro_clients_running_arena = [];
 
  saro_meh_plyr_disc_index = addMissionEventHandler ["PlayerDisconnected",
  {
-  if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS EH-Server: Player disconnected, unregistering player and vehicles"; };
+  if ( saro_arena_debug ) then { diag_log "SASPS EH-Server: Player disconnected, unregistering player and vehicles"; };
   
   _this spawn
   {
@@ -29,17 +29,17 @@ if (isNil "saro_clients_running_arena") then
    // player not registered
    if (_index isEqualTo -1) exitWith 
    {
-    if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS EH-Server: Player not registered."; };
+    if ( saro_arena_debug ) then { diag_log "SASPS EH-Server: Player not registered."; };
    };
  
-    if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS EH-Server: Deleting player and vehicles from array"; };
+    if ( saro_arena_debug ) then { diag_log "SASPS EH-Server: Deleting player and vehicles from array"; };
 
    _plyr_vecs = saro_clients_running_arena deleteAt _index; 
   
    //this was the last player in array. Nil the array and remove mission EH
    if (saro_clients_running_arena isEqualTo []) then
    {
-    if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS EH-Server: Player was last in array, deleting array and EH"; };
+    if ( saro_arena_debug ) then { diag_log "SASPS EH-Server: Player was last in array, deleting array and EH"; };
 
     saro_clients_running_arena = nil;
     removeMissionEventHandler ["PlayerDisconnected", saro_meh_plyr_disc_index];
@@ -61,13 +61,13 @@ if (isNil "saro_clients_running_arena") then
    
     if ( !local (_x#0) ) then
     {
-     if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS EH-Server: Player disconnected, vehicle not local, starting AS on client"; };
+     if ( saro_arena_debug ) then { diag_log "SASPS EH-Server: Player disconnected, vehicle not local, starting AS on client"; };
   
      //send to machine where the vehicle is local
      _dummy = _vec_params remoteExec [ "saro_fnc_arena_start", (owner (_x#0)) ];
     } else
     {
-     if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS EH-Server: Player disconnected, vehicle local, starting AS on server"; };
+     if ( saro_arena_debug ) then { diag_log "SASPS EH-Server: Player disconnected, vehicle local, starting AS on server"; };
    
      _dummy = _vec_params spawn saro_fnc_arena_start;
     };
@@ -80,10 +80,10 @@ private _index = saro_clients_running_arena findIf {(_x#0) isEqualTo _uid};
 
 if (_index isEqualTo -1) exitWith
 {
- if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS CR-Server: Player not in array. Registering player and vehicle."; };
+ if ( saro_arena_debug ) then { diag_log "SASPS CR-Server: Player not in array. Registering player and vehicle."; };
  _dummy = saro_clients_running_arena pushback [_uid, _vec_params];
 };
 
-if ( missionNamespace getVariable "debugOn" ) then { diag_log "SASPS CR-Server: Player found. Registering new vehicle."; };
+if ( saro_arena_debug ) then { diag_log "SASPS CR-Server: Player found. Registering new vehicle."; };
 
 _dummy = (saro_clients_running_arena select _index) pushback _vec_params;
