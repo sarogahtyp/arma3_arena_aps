@@ -9,15 +9,16 @@
 
 Params:
 		_vec - object - vehicle to which the Arena system is to be attached
+		_skill - number - values between 0 and 100 with 100 being the best skill possible.
 		_reload_time - number - optional - time to reload the charge after it was fired (default 2 seconds)
 										 - if lower 0.5 seconds than it is changed to 0.5 seconds
         _range - number - optional - detection range (default 200 meters)
-        _fire_max_range - number - optional - maximum interception distance (default 70 meters)
+        _fire_max_range - number - optional - maximum interception distance (default 40 meters)
         _fire_min_range - number - optional - minimum interception distance (default 15 meters)
 		_charge_height - number - optional - charge explodes on this height above vehicle (default 10 meters)
 */
 
-private _dummy = params [ ["_vec", objNull, [objNull]], ["_skill", 90, [0]], ["_reload_time", 0, [0]], ["_range", 200, [0]], ["_fire_max_range", 40, [0]], ["_fire_min_range", 15, [0]], ["_charge_height", 10, [0]] ];
+private _dummy = params [ ["_vec", objNull, [objNull]], ["_skill", 80, [0]], ["_reload_time", 2, [0]], ["_range", 200, [0]], ["_fire_max_range", 40, [0]], ["_fire_min_range", 15, [0]], ["_charge_height", 10, [0]] ];
 
 
 _skill = if (_skill > 100) then {100} else {_skill};

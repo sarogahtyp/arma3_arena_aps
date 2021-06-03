@@ -28,8 +28,8 @@ if (isNull _threat || { !alive _threat } ) exitWith
   _vec setVariable ["saro_tracking", false, true];
 };
 
-//if threat is not local at this point then we are on server machine!
-//Therefore we just execute this script on the proper client and leave.
+// if threat is not local at this point then we are on server machine!
+// Therefore we just execute this script on the proper client and leave.
 if (!local _threat) exitWith
 {
  if ( saro_arena_debug ) then { diag_log "SASPS TR-Server: Threat not local, exiting and restarting on client."; };
@@ -37,20 +37,20 @@ if (!local _threat) exitWith
   _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight ] remoteExec [ "saro_fnc_track", (owner _threat) ];
 };
 
-//randomize skill
-//_skill = random [0, _skill, 100];
-
 //weight handicap for 1000 m/s
 private _weight_handicap = 0.5556;
 
-//put all together
-_skill = (100 - random (100 - _skill)) * _weight_handicap * 0.01;
+//randomize within skill limit
+_skill = 100 - random (100 - _skill);
 
 //get class name of threat
 private _class = typeOf _threat;
 
 //randomize charge speed for substitution and apply skill on it
-_charge_speed = random [1600, 1800, 2000] * _skill * 0.001;
+_charge_speed = random [0.016, 0.018, 0.02] * _skill *_weight_handicap;
+
+//manipulate skill for use on substitute script
+_skill = _skill * 0.5;
 
 private _dummy = 0;
 private "_last_dist";
@@ -82,7 +82,7 @@ waitUntil
 
    _dummy = [_vec, _threat_pos, _maxHeight, _start_pos] call saro_fnc_fire_cone;
 
-   [_vec, _threat, _threat_pos, _maxHeight, _class, _charge_speed, _start_pos] call saro_fnc_substitute_threat;
+   [_vec, _threat, _threat_pos, _maxHeight, _class, _charge_speed, _start_pos, _skill] call saro_fnc_substitute_threat;
   
    _vec setVariable ["saro_charge_fired", true, true];
   };

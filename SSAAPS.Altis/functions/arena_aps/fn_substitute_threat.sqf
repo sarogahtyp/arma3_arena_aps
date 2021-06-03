@@ -1,7 +1,49 @@
-params [ ["_vec", objNull, [objNull]], ["_threat", objNull, [objNull]], "_threat_pos", "_maxHeight", "_class", "_charge_speed","_start_pos"];
+params [ 
+		[ "_vec", objNull, [objNull] ],
+		[ "_threat", objNull, [objNull] ],
+		"_threat_pos",
+		"_maxHeight",
+		"_class",
+		"_charge_speed",
+		"_start_pos",
+		"_skill" 
+	   ];
 
 if (isNull _threat || isNull _vec) exitWith{};
 if !(alive _threat && alive _vec) exitWith{};
+
+// spawn chest to destroy threat mid-air
+if ( (random 100) < _skill ) exitWith
+{
+ 
+ _threat_norm_vector = vectorNormalized (velocity _threat);
+
+ _threat_pos = position _threat;
+
+ _spawn_pos = AGLToASL (_threat_pos vectoradd _threat_norm_vector vectorAdd [0, 0, -0.3]);
+  
+ _chest = createSimpleObject [ "Land_WoodenCrate_01_F", _spawn_pos];
+
+ //hide that helper chest everywhere but on this machine
+ if(isServer) then
+ {
+  _chest remoteExecCall ["hideObject", -2];
+ } else
+ {
+  _chest remoteExecCall ["hideObject", -clientOwner];
+ };
+ 
+ _chest setVectorDirAndUp [ [0, 0, -1], [0, 1, 0] ];
+ _chest setVectorUp _threat_norm_vector;
+
+ [ _threat, _chest ]spawn
+ { 
+  waitUntil { !alive (_this select 0) };
+ 
+  deleteVehicle (_this select 1);
+ };
+};
+
 
 _threat_speed_vector = velocity _threat;
 
