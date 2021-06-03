@@ -17,7 +17,20 @@ Params:
 		_charge_height - number - optional - charge explodes on this height above vehicle (default 10 meters)
 */
 
-private _dummy = params [ ["_vec", objNull, [objNull]], ["_reload_time", 2, [0]], ["_range", 200, [0]], ["_fire_max_range", 70, [0]], ["_fire_min_range", 15, [0]], ["_charge_height", 10, [0]] ];
+private _dummy = params [ ["_vec", objNull, [objNull]], ["_skill", 90, [0]], ["_reload_time", 0, [0]], ["_range", 200, [0]], ["_fire_max_range", 40, [0]], ["_fire_min_range", 15, [0]], ["_charge_height", 10, [0]] ];
+
+
+_skill = if (_skill > 100) then {100} else {_skill};
+_skill = if (_skill <= 0) then {0.001} else {_skill};
+
+_skill = if (_skill < 68) then { 0.074 * _skill } else
+{
+ if (_skill < 87) then { 0.263 * _skill - 12.895 } else
+ {
+  if (_skill < 91) then { 2.5 * _skill - 207.5 } else { 4.444 * _skill - 384.444 };
+
+ };
+};
 
 //set debug mode for whole arena system here
 _debug = false;
@@ -160,17 +173,17 @@ while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_act
    if (isServer) then
    {
     //send to machine where the threat is local
-    _dummy = [ _vec, _threat, _max_distSqr, _maxHeight] remoteExec [ "saro_fnc_track", (owner _threat) ];
+    _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight] remoteExec [ "saro_fnc_track", (owner _threat) ];
    }
    else
    {
     //as we are not on server we have to send it to server which will transfer it to the correct client
-    _dummy = [ _vec, _threat, _max_distSqr, _maxHeight] remoteExec [ "saro_fnc_track", 2 ];
+    _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight] remoteExec [ "saro_fnc_track", 2 ];
    };
   } else
   {
    //track locally
-   _dummy = [ _vec, _threat, _max_distSqr, _maxHeight ] spawn saro_fnc_track;
+   _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight ] spawn saro_fnc_track;
   };
  };
 };

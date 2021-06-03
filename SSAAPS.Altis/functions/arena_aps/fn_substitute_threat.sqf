@@ -1,31 +1,30 @@
-params [ ["_threat", objNull, [objNull]] ];
+params [ ["_vec", objNull, [objNull]], ["_threat", objNull, [objNull]], "_threat_pos", "_maxHeight", "_class", "_charge_speed","_start_pos"];
 
-_perc = random 30;
+if (isNull _threat || isNull _vec) exitWith{};
+if !(alive _threat && alive _vec) exitWith{};
 
-_class = typeOf _threat;
+_threat_speed_vector = velocity _threat;
 
-_speed_vector = velocity _threat;
+_threat_speed = vectorMagnitude _threat_speed_vector;
 
-_ro_speed = vectorMagnitude _speed_vector;
+_threat_norm_vector = vectorDir _threat;
 
-_perc_inv = 1 / (_perc + 0.00001);
+_charge_norm_vector = _start_pos vectorFromTo _threat_pos;
 
-_norm_speed = vectorNormalized _speed_vector;
- 
-_speed_change = _norm_speed vectorMultiply (_perc * 0.01);
+_charge_speed_vector = _charge_norm_vector vectorMultiply (_charge_speed * _threat_speed);
 
-_speed_change set [ 2, ( (_speed_change#2) - _perc_inv) ];
+_result_speed_vector = _threat_speed_vector vectorAdd _charge_speed_vector;
 
-_speed_change = (vectorNormalized _speed_change) vectorMultiply _ro_speed;
+_result_norm_vector = vectorNormalized _result_speed_vector;
 
-_dir_vectors = [ (vectorDir _threat), (vectorUp _threat) ];
-  
-_posi = position _threat;
-  
+_dir_vectors = [ ( vectorDir _threat), ( vectorUp _threat) ];
+
 deleteVehicle _threat;
-  
-_threat = createVehicle [_class, _posi,[],0,"NONE"];
 
-_threat setVelocity _speed_change;
+_threat = createVehicle [_class, _threat_pos,[],0,"NONE"];
 
 _threat setVectorDirAndUp _dir_vectors;
+
+_threat setVelocity _result_speed_vector;
+
+_threat setVectorDir _result_norm_vector;

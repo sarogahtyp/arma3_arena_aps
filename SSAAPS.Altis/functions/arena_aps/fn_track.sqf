@@ -3,7 +3,7 @@
  Description: tracks a threatening object and calls the function to shoot a protection charge if it is near
 */
 
-params [["_vec", objNull, [objNull]], ["_threat", objNull, [objNull]], "_max_distSqr", "_maxHeight"];
+params [["_vec", objNull, [objNull]], ["_threat", objNull, [objNull]], "_skill", "_max_distSqr", "_maxHeight"];
 
 if ( saro_arena_debug ) then { diag_log "SASPS TR: Script started, nothing checked."; };
 
@@ -34,9 +34,24 @@ if (!local _threat) exitWith
 {
  if ( saro_arena_debug ) then { diag_log "SASPS TR-Server: Threat not local, exiting and restarting on client."; };
   //send to machine where the threat is local
-  _dummy = [ _vec, _threat, _max_distSqr, _maxHeight ] remoteExec [ "saro_fnc_track", (owner _threat) ];
-};  
- 
+  _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight ] remoteExec [ "saro_fnc_track", (owner _threat) ];
+};
+
+//randomize skill
+//_skill = random [0, _skill, 100];
+
+//weight handicap for 1000 m/s
+private _weight_handicap = 0.5556;
+
+//put all together
+_skill = (100 - random (100 - _skill)) * _weight_handicap * 0.01;
+
+//get class name of threat
+private _class = typeOf _threat;
+
+//randomize charge speed for substitution and apply skill on it
+_charge_speed = random [1600, 1800, 2000] * _skill * 0.001;
+
 private _dummy = 0;
 private "_last_dist";
 private _dist = _vec distanceSqr _threat;
@@ -58,10 +73,16 @@ waitUntil
   if ((_dist < _max_distSqr) && (_last_dist > _dist)) then
   {
    if ( saro_arena_debug ) then { diag_log "SASPS TR: Threat in range, defending and setting saro_charge_fired true."; };
+   
+   private _threat_pos = position _threat;
+   
+   private _start_pos = position _vec;
 
-   _dummy = [_vec, (position _threat), _maxHeight] spawn saro_fnc_fire_cone;
+   _start_pos set [2, _maxHeight];
 
-   [_threat] call saro_fnc_substitute_threat;
+   _dummy = [_vec, _threat_pos, _maxHeight, _start_pos] call saro_fnc_fire_cone;
+
+   [_vec, _threat, _threat_pos, _maxHeight, _class, _charge_speed, _start_pos] call saro_fnc_substitute_threat;
   
    _vec setVariable ["saro_charge_fired", true, true];
   };
