@@ -3,7 +3,7 @@
  Description: tracks a threatening object and calls the function to shoot a protection charge if it is near
 */
 
-params [["_vec", objNull, [objNull]], ["_threat", objNull, [objNull]], "_skill", "_max_distSqr", "_maxHeight"];
+params [["_vec", objNull, [objNull]], ["_threat", objNull, [objNull]], "_skill", "_lift_start_height", "_lift_speed", "_fire_max_range", "_fire_min_range", "_lift_time", "_maxWidth" ];
 
 if ( saro_arena_debug ) then { diag_log "SASPS TR: Script started, nothing checked."; };
 
@@ -34,7 +34,7 @@ if (!local _threat) exitWith
 {
  if ( saro_arena_debug ) then { diag_log "SASPS TR-Server: Threat not local, exiting and restarting on client."; };
   //send to machine where the threat is local
-  _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight ] remoteExec [ "saro_fnc_track", (owner _threat) ];
+  _dummy = [ _vec, _threat, _skill, _lift_start_height, _lift_speed, _fire_max_range, _fire_min_range, _lift_time, _maxWidth ] remoteExec [ "saro_fnc_track", (owner _threat) ];
 };
 
 //weight handicap for 1000 m/s
@@ -56,9 +56,12 @@ private _dummy = 0;
 private "_last_dist";
 private _dist = _vec distanceSqr _threat;
 
-waitUntil 
+private _charge_holder = objNull;
+private _break_while = false;
+
+while { !_break_while } do
 {
- isNil 
+ _break_while = isNil 
  {
   _last_dist = _dist;
  
@@ -67,27 +70,45 @@ waitUntil
   {
    if ( saro_arena_debug ) then { diag_log "SASPS TR: Vehicle or threat gone, exiting isNil with nil to return true and therefore exiting waitUntil."; };
   };
+  
+  private _threat_speed = vectorMagnitude velocity _threat;
+  
+  _fire_range = ( _fire_max_range - _fire_min_range ) * _threat_speed / 2000 + _fire_min_range;
+  
+  _lift_range = (_fire_range + _threat_speed * _lift_time)^2;
+
+  _max_distSqr = (_maxWidth + _fire_range)^2;
 
   _dist = _vec distanceSqr _threat;
+
+  //spawn charge container and start lifting it.
+  if ( ( _dist < _lift_range ) && ( _last_dist > _dist ) && isNull _charge_holder ) then
+  {
+   private _start_pos = position _vec;
+   
+   _start_pos set [ 2, _lift_start_height ];
+   
+   _charge_holder = createVehicle [ "Box_I_E_UAV_06_F", _start_pos, [], 0, "CAN_COLLIDE" ];
+	
+   _charge_holder setVelocity ( (velocity _vec) vectorAdd ((vectorUp _vec) vectorMultiply _lift_speed) );
+  };
  
+  //fire shrapnel cone
   if ((_dist < _max_distSqr) && (_last_dist > _dist)) then
   {
    if ( saro_arena_debug ) then { diag_log "SASPS TR: Threat in range, defending and setting saro_charge_fired true."; };
    
    private _threat_pos = position _threat;
-   
-   private _start_pos = position _vec;
+   private _start_pos = position _charge_holder;
 
-   _start_pos set [2, _maxHeight];
+   _dummy = [_threat_pos, _start_pos, _charge_holder] call saro_fnc_fire_cone;
 
-   _dummy = [_vec, _threat_pos, _maxHeight, _start_pos] call saro_fnc_fire_cone;
-
-   [_vec, _threat, _threat_pos, _maxHeight, _class, _charge_speed, _start_pos, _skill] call saro_fnc_substitute_threat;
+   [_threat, _threat_pos, _class, _charge_speed, _start_pos, _skill ] call saro_fnc_substitute_threat;
   
    _vec setVariable ["saro_charge_fired", true, true];
   };
   // if charge is fired or threat is moving away then end isNil with nil to get waitUntil finished.
-  if ((_vec getVariable "saro_charge_fired") or (_last_dist < _dist)) then {} else {false};
+  if ((_vec getVariable "saro_charge_fired") or (_last_dist < _dist)) then { nil } else { false };
  };
 };
 

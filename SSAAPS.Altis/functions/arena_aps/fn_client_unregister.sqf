@@ -22,7 +22,7 @@ if (saro_clients_running_arena isEqualTo [] ) exitWith
 private _index = saro_clients_running_arena findIf { (_x#0) isEqualTo _uid}; // return index of players entry
 
 //no entry of that player, leave
-if ( _index isEqualTo -1) exitWith 
+if ( _index isEqualTo -1) exitWith
 {
 if ( saro_arena_debug ) then { diag_log "SASPS CUR-Server: Player not found in array, is not registered."; };
 };

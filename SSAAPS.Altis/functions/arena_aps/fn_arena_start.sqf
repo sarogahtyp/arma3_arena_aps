@@ -11,7 +11,7 @@ Params:
 		_vec - object - vehicle to which the Arena system is to be attached
 		_skill - number - values between 0 and 100 with 100 being the best skill possible.
 		_reload_time - number - optional - time to reload the charge after it was fired (default 2 seconds)
-										 - if lower 0.5 seconds than it is changed to 0.5 seconds
+										 - if lower 0.5 seconds than it is changed to 0.2 seconds
         _range - number - optional - detection range (default 200 meters)
         _fire_max_range - number - optional - maximum interception distance (default 40 meters)
         _fire_min_range - number - optional - minimum interception distance (default 15 meters)
@@ -104,7 +104,7 @@ _range = if (_range <= _fire_max_range) then {_fire_max_range + 1} else {_range}
 
 //_sleep_time for main loop. missiles should not get closer than 120% of _fire_max_range in one sleep cycle
 //assuming 2000 m/s as max speed for armas AT threats
-private _sleep_time = 0.4 * (_range - _fire_max_range) / 2000;
+private _sleep_time = 0.1 * (_range - _fire_max_range) / 2000;
 
 // mark loaded charge as not fired
 _vec setVariable ["saro_charge_fired", false, true];
@@ -119,24 +119,22 @@ while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_act
 {
  _incoming =[];
 
- waitUntil 
+ while { _vec getVariable "saro_tracking" } do 
  {
   sleep _sleep_time;
 
   //check if something bad happend with vec
   if (isNil "_vec" || { isNull _vec || { !alive _vec } } ) exitWith 
   {
-   if ( saro_arena_debug ) then { diag_log "SASPS AS: Vehicle null, nil or dead. Exiting waitUntil"; };
+   if ( saro_arena_debug ) then { diag_log "SASPS AS: Vehicle null, nil or dead. Inner While"; };
    true
   };
 
   if (_vec getVariable "saro_charge_fired") then
   {
    _vec setVariable ["saro_charge_fired", false, true];
-   sleep (_reload_time max 0.5);
+   sleep (_reload_time  max 0.2);
   };
-  
-  !(_vec getVariable "saro_tracking")
  };
 
  //check if something bad happend with vec
@@ -163,28 +161,28 @@ while { !isNil {"_vec"} && { !isNull _vec && { (_vec getVariable "saro_arena_act
 
   private _threat = (_incoming#0);
   
-  private _speed = vectorMagnitude velocity _threat;
-
-  _fire_range = ( _fire_max_range - _fire_min_range ) * _speed / 2000 + _fire_min_range;
-
-  _max_distSqr = (_maxWidth + _fire_range)^2;
+  _lift_speed = random [80 , 100, 120]; // m/s
+  
+  _lift_time = _charge_height / _lift_speed;
+  
+  _lift_start_height = _maxHeight - _charge_height;
 
   if (!local _threat) then
   {
    if (isServer) then
    {
     //send to machine where the threat is local
-    _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight] remoteExec [ "saro_fnc_track", (owner _threat) ];
+    _dummy = [ _vec, _threat, _skill, _lift_start_height, _lift_speed, _fire_max_range, _fire_min_range, _lift_time, _maxWidth ] remoteExec [ "saro_fnc_track", (owner _threat) ];
    }
    else
    {
     //as we are not on server we have to send it to server which will transfer it to the correct client
-    _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight] remoteExec [ "saro_fnc_track", 2 ];
+    _dummy = [ _vec, _threat, _skill, _lift_start_height, _lift_speed, _fire_max_range, _fire_min_range, _lift_time, _maxWidth ] remoteExec [ "saro_fnc_track", 2 ];
    };
   } else
   {
    //track locally
-   _dummy = [ _vec, _threat, _skill, _max_distSqr, _maxHeight ] spawn saro_fnc_track;
+   _dummy = [ _vec, _threat, _skill, _lift_start_height, _lift_speed, _fire_max_range, _fire_min_range, _lift_time, _maxWidth ] spawn saro_fnc_track;
   };
  };
 };
